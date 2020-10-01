@@ -2,6 +2,8 @@
 
 from operator import itemgetter
 import time
+import copy
+from threading import Lock
 
 from .websockets import BinanceSocketManager
 
@@ -16,6 +18,7 @@ class DepthCache(object):
 
         """
         self.symbol = symbol
+        self._lock = Lock()
         self._bids = {}
         self._asks = {}
         self.update_time = None
@@ -27,9 +30,10 @@ class DepthCache(object):
         :return:
 
         """
-        self._bids[bid[0]] = float(bid[1])
-        if bid[1] == "0.00000000":
-            del self._bids[bid[0]]
+        with self._lock:
+            self._bids[bid[0]] = float(bid[1])
+            if bid[1] == "0.00000000":
+                del self._bids[bid[0]]
 
     def add_ask(self, ask):
         """Add an ask to the cache
@@ -38,9 +42,10 @@ class DepthCache(object):
         :return:
 
         """
-        self._asks[ask[0]] = float(ask[1])
-        if ask[1] == "0.00000000":
-            del self._asks[ask[0]]
+        with self._lock:
+            self._asks[ask[0]] = float(ask[1])
+            if ask[1] == "0.00000000":
+                del self._asks[ask[0]]
 
     def get_bids(self):
         """Get the current bids
@@ -73,7 +78,10 @@ class DepthCache(object):
             ]
 
         """
-        return DepthCache.sort_depth(self._bids, reverse=True)
+        bids = None
+        with self._lock:
+            bids = copy.deepcopy(self._bids)
+        return DepthCache.sort_depth(bids, reverse=True)
 
     def get_asks(self):
         """Get the current asks
@@ -106,7 +114,22 @@ class DepthCache(object):
             ]
 
         """
-        return DepthCache.sort_depth(self._asks, reverse=False)
+        asks = None
+        with self._lock:
+            asks = copy.deepcopy(self._asks)
+        return DepthCache.sort_depth(asks, reverse=False)
+
+    def get_bids_asks(self):
+        bids = None
+        asks = None
+        with self._lock:
+            bids = copy.deepcopy(self._bids)
+            asks = copy.deepcopy(self._asks)
+
+        sorted_bids = DepthCache.sort_depth(bids, reverse=True)
+        sorted_asks = DepthCache.sort_depth(asks, reverse=False)
+        return (sorted_bids, sorted_asks)
+
 
     @staticmethod
     def sort_depth(vals, reverse=False):
