@@ -119,7 +119,7 @@ class DepthCache(object):
             asks = copy.deepcopy(self._asks)
         return DepthCache.sort_depth(asks, reverse=False)
 
-    def get_bids_asks(self):
+    def get_depth(self):
         bids = None
         asks = None
         with self._lock:
@@ -128,7 +128,7 @@ class DepthCache(object):
 
         sorted_bids = DepthCache.sort_depth(bids, reverse=True)
         sorted_asks = DepthCache.sort_depth(asks, reverse=False)
-        return (sorted_bids, sorted_asks)
+        return (sorted_bids, sorted_asks, self.update_time)
 
 
     @staticmethod
@@ -283,6 +283,9 @@ class DepthCacheManager(object):
 
         """
         return self._depth_cache
+
+    def get_depth(self):
+        return self._depth_cache.get_depth()
 
     def close(self, close_socket=False):
         """Close the open socket for this manager
